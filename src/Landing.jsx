@@ -163,9 +163,10 @@ function IntroOverlay({ onComplete, lang }) {
   const t = TEXTS[lang]
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 600)
-    const t2 = setTimeout(() => setPhase(2), 1800)
-    const t3 = setTimeout(() => onComplete(), 2400)
+    // 4 sekunders intro: logo (0s) → tagline (1.2s) → hold (3s) → fade-out (3.4s) → done (4s)
+    const t1 = setTimeout(() => setPhase(1), 1200)
+    const t2 = setTimeout(() => setPhase(2), 3400)
+    const t3 = setTimeout(() => onComplete(), 4000)
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
   }, [onComplete])
 
@@ -489,11 +490,11 @@ export default function Landing() {
           to   { opacity: 1; transform: translateY(0); }
         }
         .ed-intro-ring-draw {
-          animation: ed-ring-draw 1s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+          animation: ed-ring-draw 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
         }
         .ed-intro-letter {
           opacity: 0;
-          animation: ed-letter-in 0.4s ease 0.5s forwards;
+          animation: ed-letter-in 0.6s ease 0.7s forwards;
         }
         .ed-landing-card {
           animation: ed-fade-in 0.5s ease both;
