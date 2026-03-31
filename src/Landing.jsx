@@ -460,18 +460,34 @@ export default function Landing() {
     if (!forgotPhone.trim()) return
 
     setForgotLoading(true)
+    setError('')
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('ed-forgot-code', {
-        body: { phone: forgotPhone.trim() },
-      })
+      // Rens telefonnummer og slå op i ef_clients
+      const cleaned = forgotPhone.trim().replace(/\s/g, '')
+      const { data: clients } = await supabase
+        .from('ef_clients')
+        .select('access_code, phone')
+        .eq('active', true)
 
-      if (fnError) throw fnError
+      // Match på telefonnummer (ignorer mellemrum og +45-prefix)
+      const normalize = (p) => (p || '').replace(/\s/g, '').replace(/^\+45/, '').replace(/^0045/, '')
+      const inputNorm = normalize(cleaned)
+      const match = (clients || []).find(c => normalize(c.phone) === inputNorm)
 
-      if (data?.error === 'not_found') {
+      if (!match) {
         setError(t.errorPhone)
         setForgotLoading(false)
         return
       }
+
+      // Telefon fundet – send SMS via ef-send-sms
+      const { error: smsErr } = await supabase.functions.invoke('ef-send-sms', {
+        body: {
+          phone: cleaned,
+          message: `Din Eventday adgangskode er: ${match.access_code}\nLog ind på: eventday.dk`,
+        },
+      })
+      if (smsErr) throw smsErr
 
       setForgotSent(true)
     } catch (err) {
