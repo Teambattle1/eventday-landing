@@ -394,19 +394,44 @@ export default function Landing() {
     setError('')
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('ed-verify-code', {
+      const { data, error: fnError } = await supabase.functions.invoke('ef-verify-code', {
         body: { code: codeToCheck },
       })
 
       if (fnError) throw fnError
 
-      // Admin multi-app: vis app-vælger popup
-      if (data?.type === 'admin_multi' && data.apps?.length > 0) {
-        setAdminApps({ label: data.label, apps: data.apps })
-        setLoading(false)
+      // Eventday admin – direkte login
+      if (data?.type === 'admin') {
+        const adminName = data.adminName || 'Admin'
+        localStorage.setItem('ef_admin', JSON.stringify({
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          name: adminName,
+        }))
+        window.location.href = 'https://eventday.dk/admin'
         return
       }
 
+      // Eventday klient – til portal
+      if (data?.type === 'client') {
+        if (!data.portalToken) {
+          setError(t.errorUnknown)
+          registerFailedAttempt(attempts)
+          return
+        }
+        const key = `ef_portal_${data.portalToken}`
+        localStorage.setItem(key, JSON.stringify({
+          token: data.portalToken,
+          firma: data.firma,
+          brandColor: data.brandColor,
+          logoUrl: data.logoUrl,
+          clientId: data.clientId,
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        }))
+        window.location.href = `https://eventday.dk/portal/${data.portalToken}`
+        return
+      }
+
+      // OCC/eksternt system – redirect
       if (data?.type === 'redirect' && data.redirectUrl) {
         setRedirecting({
           project: data.project,
