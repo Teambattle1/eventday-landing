@@ -276,8 +276,8 @@ function IntroOverlay({ onComplete, lang }) {
 }
 
 export default function Landing() {
-  // Sprog
-  const [lang, setLang] = useState(() => localStorage.getItem('ed_lang') || 'da')
+  // Sprog – default engelsk
+  const [lang, setLang] = useState(() => localStorage.getItem('ed_lang') || 'en')
   const t = TEXTS[lang]
 
   // Intro-animation state
@@ -299,6 +299,9 @@ export default function Landing() {
   const [attempts, setAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState(null)
   const [lockCountdown, setLockCountdown] = useState(0)
+
+  // Sprog-popup efter login
+  const [langPickerPending, setLangPickerPending] = useState(null) // gemmer redirect-info mens vi venter på sprogvalg
 
   // Glemt kode-flow
   const [showForgotFlow, setShowForgotFlow] = useState(false)
@@ -400,18 +403,19 @@ export default function Landing() {
 
       if (fnError) throw fnError
 
-      // Eventday admin – direkte login
+      // Eventday admin – vis sprog-popup, derefter redirect
       if (data?.type === 'admin') {
         const adminName = data.adminName || 'Admin'
         localStorage.setItem('ef_admin', JSON.stringify({
           expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
           name: adminName,
         }))
-        window.location.href = 'https://eventday.dk/admin'
+        setLangPickerPending({ redirectUrl: 'https://eventday.dk/admin' })
+        setLoading(false)
         return
       }
 
-      // Eventday klient – til portal
+      // Eventday klient – vis sprog-popup, derefter redirect
       if (data?.type === 'client') {
         if (!data.portalToken) {
           setError(t.errorUnknown)
@@ -427,7 +431,8 @@ export default function Landing() {
           clientId: data.clientId,
           expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
         }))
-        window.location.href = `https://eventday.dk/portal/${data.portalToken}`
+        setLangPickerPending({ redirectUrl: `https://eventday.dk/portal/${data.portalToken}` })
+        setLoading(false)
         return
       }
 
@@ -504,6 +509,15 @@ export default function Landing() {
     setForgotSent(false)
     setError('')
     setTimeout(() => codeInputRef.current?.focus(), 80)
+  }
+
+  // Sprog valgt i popup → gem + redirect
+  function pickLang(chosenLang) {
+    localStorage.setItem('ed_lang', chosenLang)
+    localStorage.setItem('ef_lang', chosenLang)
+    if (langPickerPending?.redirectUrl) {
+      window.location.href = langPickerPending.redirectUrl
+    }
   }
 
   // ── Afledt tilstand ───────────────────────────────────────────────────────
@@ -693,6 +707,53 @@ export default function Landing() {
 
       {/* ── Fullscreen intro-animation ──────────────────────────────────── */}
       {showIntro && <IntroOverlay onComplete={handleIntroComplete} lang={lang} />}
+
+      {/* ── Sprog-popup efter login ──────────────────────────────────────── */}
+      {langPickerPending && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9998,
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+        }}>
+          <div style={{
+            background: 'var(--surface)', borderRadius: '16px', padding: '36px 32px',
+            maxWidth: '360px', width: '100%', textAlign: 'center',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+            animation: 'ed-fade-in 0.25s ease',
+          }}>
+            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px' }}>
+              Choose language
+            </p>
+            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '14px', color: 'var(--muted)', marginBottom: '28px' }}>
+              Vælg sprog / Select language
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button onClick={() => pickLang('da')} style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+                padding: '20px 16px', borderRadius: '12px', cursor: 'pointer',
+                border: '2px solid var(--border2)', background: 'var(--surface2)',
+                transition: 'border-color 0.15s, background 0.15s', fontFamily: "'Outfit', sans-serif",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--surface2)' }}>
+                <FlagDK size={36} />
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>Dansk</span>
+              </button>
+              <button onClick={() => pickLang('en')} style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+                padding: '20px 16px', borderRadius: '12px', cursor: 'pointer',
+                border: '2px solid var(--border2)', background: 'var(--surface2)',
+                transition: 'border-color 0.15s, background 0.15s', fontFamily: "'Outfit', sans-serif",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--surface2)' }}>
+                <FlagUK size={36} />
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>English</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         style={{
