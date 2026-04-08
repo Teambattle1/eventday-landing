@@ -36,7 +36,7 @@ const TEXTS = {
     footerCompany: 'TeamBattle Danmark',
     contactLabel: 'Problemer med login?',
     contactLink: 'Kontakt os: 40 27 40 27',
-    introTagline: 'Din event-platform',
+    introTagline: 'designed by TeamBattle',
     adminWelcome: (name) => `Velkommen, ${name}`,
     adminChoose: 'Vælg en app',
     adminOpen: 'Åbn',
@@ -69,7 +69,7 @@ const TEXTS = {
     footerCompany: 'TeamBattle Denmark',
     contactLabel: 'Having trouble signing in?',
     contactLink: 'Contact us: 40 27 40 27',
-    introTagline: 'Your event platform',
+    introTagline: 'designed by TeamBattle',
     adminWelcome: (name) => `Welcome, ${name}`,
     adminChoose: 'Choose an app',
     adminOpen: 'Open',
@@ -295,6 +295,9 @@ export default function Landing() {
   // Admin multi-app vælger
   const [adminApps, setAdminApps] = useState(null) // { label, apps: [...] }
 
+  // User site-vælger (fra landing_user_codes flow)
+  const [userSites, setUserSites] = useState(null) // { name, role, sites: [...] }
+
   // Lockout
   const [attempts, setAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState(null)
@@ -324,6 +327,24 @@ export default function Landing() {
     if (params.get('code')) {
       setShowIntro(false)
       setIntroComplete(true)
+    }
+  }, [])
+
+  // Genindlæs gemt user session (login huskes 30 dage)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('ed_user_session')
+      if (!raw) return
+      const s = JSON.parse(raw)
+      if (!s?.sites?.length || !s?.expiresAt || Date.now() > s.expiresAt) {
+        localStorage.removeItem('ed_user_session')
+        return
+      }
+      setUserSites(s)
+      setShowIntro(false)
+      setIntroComplete(true)
+    } catch {
+      localStorage.removeItem('ed_user_session')
     }
   }, [])
 
@@ -402,6 +423,20 @@ export default function Landing() {
       })
 
       if (fnError) throw fnError
+
+      // Personlig site-vælger fra landing_user_codes — vis altid chooser
+      if (data?.type === 'user_sites' && Array.isArray(data.sites) && data.sites.length > 0) {
+        const session = {
+          name: data.name || 'Bruger',
+          role: data.role,
+          sites: data.sites,
+          expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 dage
+        }
+        try { localStorage.setItem('ed_user_session', JSON.stringify(session)) } catch {}
+        setUserSites(session)
+        setLoading(false)
+        return
+      }
 
       // Eventday admin – vis sprog-popup, derefter redirect
       if (data?.type === 'admin') {
@@ -834,8 +869,167 @@ export default function Landing() {
             {/* Kortindhold */}
             <div className="ed-content-enter" style={{ padding: '36px 40px 32px' }}>
 
-              {/* ══ ADMIN APP-VÆLGER ═════════════════════════════════════════ */}
-              {adminApps ? (
+              {/* ══ USER SITE-VÆLGER (landing_user_codes) ═════════════════════ */}
+              {userSites ? (
+                <div>
+                  <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: 'var(--accent-dim)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 14px',
+                      }}
+                    >
+                      <SVGIcon name="lock" size={22} color="var(--accent)" />
+                    </div>
+                    <p
+                      style={{
+                        fontFamily: "'Playfair Display', Georgia, serif",
+                        fontSize: '18px',
+                        fontWeight: '700',
+                        color: 'var(--text)',
+                        margin: '0 0 4px',
+                      }}
+                    >
+                      {t.adminWelcome((userSites.name || '').split(' ')[0])}
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        fontSize: '14px',
+                        color: 'var(--muted)',
+                        margin: 0,
+                      }}
+                    >
+                      {t.adminChoose}
+                    </p>
+                  </div>
+
+                  <div
+                    className="ed-user-sites-grid"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: '12px',
+                    }}
+                  >
+                    {userSites.sites.map((s) => {
+                      const tint = s.color || 'var(--accent)'
+                      const isImg = s.icon && (s.icon.startsWith('data:image/') || s.icon.startsWith('http'))
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            if (s.url.startsWith('/')) {
+                              // Intern SPA-route (fx /admin/access)
+                              window.history.pushState({}, '', s.url)
+                              window.dispatchEvent(new PopStateEvent('popstate'))
+                              return
+                            }
+                            // Ekstern URL: send direkte videre uden mellemskærm
+                            window.location.href = s.url
+                          }}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            gap: '8px',
+                            padding: '12px 6px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: 'var(--r)',
+                            cursor: 'pointer',
+                            transition: 'transform 0.1s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)'
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '64px',
+                              height: '64px',
+                              borderRadius: '16px',
+                              background: tint,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              overflow: 'hidden',
+                              boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                            }}
+                          >
+                            {isImg ? (
+                              <img
+                                src={s.icon}
+                                alt=""
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  display: 'block',
+                                }}
+                              />
+                            ) : (
+                              <span
+                                style={{
+                                  fontFamily: "'Playfair Display', Georgia, serif",
+                                  fontSize: '28px',
+                                  fontWeight: '700',
+                                  color: '#fff',
+                                }}
+                              >
+                                {s.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            style={{
+                              fontFamily: "'Outfit', sans-serif",
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: 'var(--text)',
+                              textAlign: 'center',
+                              lineHeight: 1.2,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%',
+                            }}
+                          >
+                            {s.name}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ textAlign: 'center', marginTop: '20px', display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                    <button
+                      className="ed-btn-ghost"
+                      onClick={() => {
+                        try { localStorage.removeItem('ed_user_session') } catch {}
+                        setUserSites(null)
+                        setCode('')
+                        setTimeout(() => codeInputRef.current?.focus(), 80)
+                      }}
+                    >
+                      <SVGIcon name="log-out" size={14} />
+                      {lang === 'da' ? 'Log ud' : 'Log out'}
+                    </button>
+                  </div>
+                </div>
+
+              /* ══ ADMIN APP-VÆLGER ═════════════════════════════════════════ */
+              ) : adminApps ? (
                 <div>
                   <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                     <div
