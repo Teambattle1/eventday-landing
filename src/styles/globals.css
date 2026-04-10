@@ -594,6 +594,10 @@ input, textarea, select, button {
   background: var(--gold-dim);
   color: var(--gold);
 }
+.admin-role--venue {
+  background: var(--green-dim);
+  color: var(--green);
+}
 .admin-info-box {
   background: var(--accent-dim);
   border: 1px solid rgba(212,100,10,0.2);
@@ -605,6 +609,16 @@ input, textarea, select, button {
   margin-bottom: 16px;
 }
 .admin-info-box b { color: var(--accent); }
+.admin-venue-badge {
+  background: var(--green-dim);
+  color: var(--green);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 
 /* User detail modal */
 .admin-user-head {

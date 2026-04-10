@@ -51,6 +51,7 @@ const ROLE_LABELS = {
   ef_admin: 'Admin',
   ef_client: 'Kunde',
   ef_contact: 'Kontakt',
+  venue: 'Venue',
 }
 
 function loadSession() {
@@ -270,6 +271,8 @@ function UserRow({ user, access, sitesCount, onOpen, onSetCode }) {
           <CodeEditor user={user} onSetCode={onSetCode} />
           {isClient ? (
             <div className="admin-user-count admin-eventday-badge">→ eventday.dk</div>
+          ) : user.user_type === 'venue' ? (
+            <div className="admin-user-count admin-venue-badge">→ venue.eventday.dk</div>
           ) : (
             <div className="admin-user-count">{grants.size} / {sitesCount} sites</div>
           )}
@@ -688,12 +691,12 @@ function AccessManager({ session, initialData, onLogout }) {
 
     return users.filter((u) => {
       if (filter === 'employee') {
-        // "Crew" tab: only non-admin employees
         if (!(u.user_type === 'employee' && u.role === 'crew')) return false
       } else if (filter === 'ef_admin') {
-        // "Admin" tab: ef_admin users + admin employees
         const isAdminEmp = u.user_type === 'employee' && u.role === 'admin'
         if (!(u.user_type === 'ef_admin' || isAdminEmp)) return false
+      } else if (filter === 'venue') {
+        if (u.user_type !== 'venue') return false
       } else if (filter !== 'all' && u.user_type !== filter) {
         return false
       }
@@ -802,7 +805,7 @@ function AccessManager({ session, initialData, onLogout }) {
   }, [])
 
   const counts = useMemo(() => {
-    const c = { crew: 0, admin: 0, ef_client: 0, ef_contact: 0 }
+    const c = { crew: 0, admin: 0, ef_client: 0, ef_contact: 0, venue: 0 }
     for (const u of users) {
       if (u.user_type === 'employee') {
         if (u.role === 'crew') c.crew++
@@ -812,6 +815,8 @@ function AccessManager({ session, initialData, onLogout }) {
       } else if (u.user_type === 'ef_client') {
         c.ef_client++
         if (Array.isArray(u.contacts)) c.ef_contact += u.contacts.length
+      } else if (u.user_type === 'venue') {
+        c.venue++
       }
     }
     return c
@@ -899,7 +904,8 @@ function AccessManager({ session, initialData, onLogout }) {
               { k: 'all', l: `Alle (${users.length})` },
               { k: 'employee', l: `Crew (${counts.crew})` },
               { k: 'ef_admin', l: `Admin (${counts.admin})` },
-              { k: 'ef_client', l: `Klienter (${counts.ef_client}, ${counts.ef_contact} kontakter)` },
+              { k: 'ef_client', l: `Klienter (${counts.ef_client})` },
+              { k: 'venue', l: `Venues (${counts.venue})` },
             ].map((tab) => (
               <button
                 key={tab.k}
