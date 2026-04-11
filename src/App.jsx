@@ -1,5 +1,7 @@
 import Landing from './Landing'
+import AdminPanel from './AdminPanel'
 
 export default function App() {
-  return <Landing />
+  const isAdmin = window.location.pathname.startsWith('/admin')
+  return isAdmin ? <AdminPanel /> : <Landing />
 }

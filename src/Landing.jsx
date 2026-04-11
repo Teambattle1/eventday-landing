@@ -71,6 +71,9 @@ export default function Landing() {
   // Redirect-indikator
   const [redirecting, setRedirecting] = useState(null) // { project, label, redirectUrl }
 
+  // Admin multi-app
+  const [adminApps, setAdminApps] = useState(null) // { label, apps: [...] }
+
   // Lockout
   const [attempts, setAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState(null)
@@ -169,6 +172,11 @@ export default function Landing() {
         return
       }
 
+      if (data?.type === 'admin_multi' && data.apps?.length > 0) {
+        setAdminApps({ label: data.label, apps: data.apps })
+        return
+      }
+
       // Ukendt kode
       setError('Ukendt kode – prøv igen')
       registerFailedAttempt(attempts)
@@ -221,6 +229,105 @@ export default function Landing() {
   const codeComplete = code.length === CODE_LENGTH
 
   // ─────────────────────────────────────────────────────────────────────────
+
+  // Admin dashboard - fuldbredde
+  if (adminApps) {
+    const apps = adminApps.apps || []
+    const topLevel = apps.filter(a => !a.parent_id)
+    const children = apps.filter(a => a.parent_id)
+    const mainApps = topLevel.filter(a => a.key !== 'games')
+    const gamesParent = topLevel.find(a => a.key === 'games')
+
+    return (
+      <div className="ed-admin" style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+        <style>{`
+          @keyframes ed-fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          .ed-admin { animation: ed-fade-in 0.35s ease both; }
+          .ed-app-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 18px 20px;
+            background: var(--surface);
+            border-radius: 12px;
+            border-left: 4px solid var(--border2);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            text-decoration: none;
+            transition: box-shadow 0.15s, transform 0.1s;
+            cursor: pointer;
+          }
+          .ed-app-card:hover {
+            box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+          }
+        `}</style>
+
+        {/* Top bar */}
+        <div style={{ background: 'var(--accent)', padding: '18px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '22px', fontWeight: '700', color: '#fff', margin: 0 }}>
+            EventDay
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: '14px', color: 'rgba(255,255,255,0.85)' }}>
+              {adminApps.label}
+            </span>
+            <button
+              onClick={() => { setAdminApps(null); setCode(''); setTimeout(() => codeInputRef.current?.focus(), 80) }}
+              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontFamily: "'Outfit', sans-serif", fontSize: '13px', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              Log ud
+            </button>
+          </div>
+        </div>
+
+        {/* Grid */}
+        <div style={{ padding: '36px 40px', maxWidth: '1200px', margin: '0 auto' }}>
+          <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '13px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
+            Apps
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px', marginBottom: '40px' }}>
+            {mainApps.map((app) => (
+              <a key={app.key} href={app.url} className="ed-app-card" style={{ borderLeftColor: app.color }}>
+                <div style={{ width: 38, height: 38, borderRadius: 8, background: app.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <SVGIcon name="external-link" size={16} color={app.color} />
+                </div>
+                <div>
+                  <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '15px', fontWeight: '600', color: 'var(--text)' }}>{app.label}</div>
+                  <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '12px', color: 'var(--dim)', marginTop: 2 }}>{app.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {gamesParent && children.length > 0 && (
+            <>
+              <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '13px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: gamesParent.color }} />
+                Games
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
+                {children.map((game) => (
+                  <a key={game.key} href={game.url} className="ed-app-card" style={{ borderLeftColor: game.color }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 8, background: game.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <SVGIcon name="external-link" size={16} color={game.color} />
+                    </div>
+                    <div>
+                      <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '15px', fontWeight: '600', color: 'var(--text)' }}>{game.label}</div>
+                      <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '12px', color: 'var(--dim)', marginTop: 2 }}>{game.key}</div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <style>{`
