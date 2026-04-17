@@ -918,7 +918,7 @@ export default function Landing() {
                       gap: '12px',
                     }}
                   >
-                    {userSites.sites.map((s) => {
+                    {[...userSites.sites].sort((a, b) => a.name.localeCompare(b.name)).map((s) => {
                       const tint = s.color || 'var(--accent)'
                       const isImg = s.icon && (s.icon.startsWith('data:image/') || s.icon.startsWith('http'))
                       return (

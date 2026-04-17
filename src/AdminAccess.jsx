@@ -350,7 +350,7 @@ function IconPreview({ icon, color }) {
 }
 
 // ── Site editor modal ──────────────────────────────────────────────────────
-function SiteEditor({ site, onSave, onCancel, onDelete }) {
+function SiteEditor({ site, onSave, onCancel, onDelete, allSites }) {
   const [form, setForm] = useState({
     id: site?.id || null,
     key: site?.key || '',
@@ -360,7 +360,16 @@ function SiteEditor({ site, onSave, onCancel, onDelete }) {
     icon: site?.icon || '',
     sort_order: site?.sort_order ?? 0,
     active: site?.active !== false,
+    parent_id: site?.parent_id || '',
   })
+
+  // Only top-level sites (no parent) that aren't this site can be parents
+  const parentOptions = useMemo(
+    () => (allSites || [])
+      .filter((s) => !s.parent_id && s.id !== form.id)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [allSites, form.id]
+  )
   const [iconError, setIconError] = useState('')
   const fileRef = useRef(null)
 
@@ -451,6 +460,19 @@ function SiteEditor({ site, onSave, onCancel, onDelete }) {
           {iconError && <div className="admin-error" style={{ marginTop: 8 }}>{iconError}</div>}
         </div>
 
+        <label className="admin-label">Parent site (valgfri)
+          <select
+            className="admin-input"
+            value={form.parent_id || ''}
+            onChange={(e) => set('parent_id', e.target.value || null)}
+          >
+            <option value="">— Ingen (top-level) —</option>
+            {parentOptions.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </label>
+
         <label className="admin-check">
           <input type="checkbox" checked={form.active} onChange={(e) => set('active', e.target.checked)} />
           Aktiv
@@ -465,6 +487,221 @@ function SiteEditor({ site, onSave, onCancel, onDelete }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Site access tree for UserDetail (parent/child with +/- expand) ─────────
+function SiteAccessTree({ sites, localGrants, savingSites, onToggle }) {
+  const [expanded, setExpanded] = useState(new Set())
+
+  const parentSites = useMemo(
+    () => sites.filter((s) => !s.parent_id).sort((a, b) => a.name.localeCompare(b.name)),
+    [sites]
+  )
+  const childrenByParent = useMemo(() => {
+    const m = new Map()
+    for (const s of sites) {
+      if (s.parent_id) {
+        if (!m.has(s.parent_id)) m.set(s.parent_id, [])
+        m.get(s.parent_id).push(s)
+      }
+    }
+    for (const [, arr] of m) arr.sort((a, b) => a.name.localeCompare(b.name))
+    return m
+  }, [sites])
+
+  function toggleExpand(id) {
+    setExpanded((prev) => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id); else n.add(id)
+      return n
+    })
+  }
+
+  function renderSiteRow(s, indent = false) {
+    const on = localGrants.has(s.id)
+    const busy = savingSites.has(s.id)
+    return (
+      <div
+        key={s.id}
+        className={`admin-site-row ${on ? 'on' : ''} ${indent ? 'admin-site-row--indent' : ''}`}
+        onClick={() => !busy && onToggle(s.id)}
+        style={on ? { borderLeftColor: s.color || 'var(--accent)' } : {}}
+      >
+        <div className="admin-site-row-icon" style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}>
+          <IconPreview icon={s.icon} color={s.color} size={22} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="admin-site-row-name">{s.name}</div>
+          <div className="admin-site-row-url">{s.url}</div>
+        </div>
+        <div
+          className={`admin-switch ${on ? 'on' : ''}`}
+          style={on ? { background: s.color || 'var(--accent)' } : {}}
+        >
+          <div className="admin-switch-knob" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="admin-site-toggle-list">
+      {parentSites.map((s) => {
+        const children = childrenByParent.get(s.id) || []
+        const isExpanded = expanded.has(s.id)
+        const childGrantCount = children.filter((c) => localGrants.has(c.id)).length
+        if (children.length === 0) return renderSiteRow(s)
+        return (
+          <div key={s.id} className="admin-site-tree-group">
+            <div className="admin-site-row admin-site-row--parent" style={{ borderLeftColor: s.color || 'var(--accent)' }}>
+              <button
+                className="admin-site-expand"
+                onClick={(e) => { e.stopPropagation(); toggleExpand(s.id) }}
+              >
+                {isExpanded ? '−' : '+'}
+              </button>
+              <div className="admin-site-row-icon" style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}>
+                <IconPreview icon={s.icon} color={s.color} size={22} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }} onClick={() => toggleExpand(s.id)}>
+                <div className="admin-site-row-name">
+                  {s.name}
+                  <span className="admin-site-child-count">{childGrantCount}/{children.length}</span>
+                </div>
+              </div>
+            </div>
+            {isExpanded && (
+              <div className="admin-site-tree-children">
+                {children.map((c) => renderSiteRow(c, true))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Sites section with hierarchy + collapse ────────────────────────────────
+function SitesSection({ sites, onEdit, onSetParent, onAdd }) {
+  const [open, setOpen] = useState(false)
+  const [expandedParents, setExpandedParents] = useState(new Set())
+
+  const parentSites = useMemo(
+    () => sites.filter((s) => !s.parent_id).sort((a, b) => a.name.localeCompare(b.name)),
+    [sites]
+  )
+  const childrenByParent = useMemo(() => {
+    const m = new Map()
+    for (const s of sites) {
+      if (s.parent_id) {
+        if (!m.has(s.parent_id)) m.set(s.parent_id, [])
+        m.get(s.parent_id).push(s)
+      }
+    }
+    // Sort children alphabetically
+    for (const [, arr] of m) arr.sort((a, b) => a.name.localeCompare(b.name))
+    return m
+  }, [sites])
+
+  function toggleParent(id) {
+    setExpandedParents((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  return (
+    <section className="admin-section">
+      <div
+        className="admin-section-head admin-section-head--toggle"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <h2 className="admin-h2">
+          <span className="admin-collapse-icon">{open ? '▾' : '▸'}</span>
+          Sites ({sites.length})
+        </h2>
+        <button
+          className="admin-btn admin-btn--primary"
+          style={{ width: 'auto' }}
+          onClick={(e) => { e.stopPropagation(); onAdd() }}
+        >
+          + Tilføj site
+        </button>
+      </div>
+      {open && (
+        <div className="admin-sites-grid">
+          {parentSites.map((s) => {
+            const children = childrenByParent.get(s.id) || []
+            const isExpanded = expandedParents.has(s.id)
+            return (
+              <div key={s.id} className="admin-site-group">
+                <div
+                  className="admin-site-card"
+                  style={{ borderLeftColor: s.color || '#d4af37' }}
+                >
+                  {children.length > 0 && (
+                    <button
+                      className="admin-site-expand"
+                      onClick={(e) => { e.stopPropagation(); toggleParent(s.id) }}
+                    >
+                      {isExpanded ? '▾' : '▸'}
+                    </button>
+                  )}
+                  <div
+                    className="admin-site-icon-sm"
+                    style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}
+                  >
+                    <IconPreview icon={s.icon} color={s.color} size={20} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onEdit(s)}>
+                    <div className="admin-site-name">{s.name}</div>
+                    <div className="admin-site-url">{s.url}</div>
+                  </div>
+                  <div className="admin-site-meta">
+                    {children.length > 0 && (
+                      <span className="admin-tag">{children.length} child</span>
+                    )}
+                    <span className="admin-tag">{s.key}</span>
+                    {!s.active && <span className="admin-tag admin-tag--muted">inaktiv</span>}
+                  </div>
+                </div>
+                {isExpanded && children.length > 0 && (
+                  <div className="admin-site-children">
+                    {children.map((c) => (
+                      <div
+                        key={c.id}
+                        className="admin-site-card admin-site-card--child"
+                        style={{ borderLeftColor: c.color || s.color || '#d4af37' }}
+                        onClick={() => onEdit(c)}
+                      >
+                        <span className="admin-contact-arrow">↳</span>
+                        <div
+                          className="admin-site-icon-sm"
+                          style={{ background: c.color ? `${c.color}22` : 'var(--surface3)' }}
+                        >
+                          <IconPreview icon={c.icon} color={c.color} size={20} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="admin-site-name">{c.name}</div>
+                          <div className="admin-site-url">{c.url}</div>
+                        </div>
+                        <div className="admin-site-meta">
+                          <span className="admin-tag">{c.key}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -623,34 +860,12 @@ function UserDetail({ user, sites, grants, adminCode, onClose, onChanged }) {
           {sites.length === 0 ? (
             <div className="admin-empty">Ingen sites oprettet endnu.</div>
           ) : (
-            <div className="admin-site-toggle-list">
-              {sites.map((s) => {
-                const on = localGrants.has(s.id)
-                const busy = savingSites.has(s.id)
-                return (
-                  <div
-                    key={s.id}
-                    className={`admin-site-row ${on ? 'on' : ''}`}
-                    onClick={() => !busy && toggleSite(s.id)}
-                    style={on ? { borderLeftColor: s.color || 'var(--accent)' } : {}}
-                  >
-                    <div className="admin-site-row-icon" style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}>
-                      <IconPreview icon={s.icon} color={s.color} size={22} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="admin-site-row-name">{s.name}</div>
-                      <div className="admin-site-row-url">{s.url}</div>
-                    </div>
-                    <div
-                      className={`admin-switch ${on ? 'on' : ''}`}
-                      style={on ? { background: s.color || 'var(--accent)' } : {}}
-                    >
-                      <div className="admin-switch-knob" />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <SiteAccessTree
+              sites={sites}
+              localGrants={localGrants}
+              savingSites={savingSites}
+              onToggle={toggleSite}
+            />
           )}
         </section>
       </div>
@@ -668,6 +883,7 @@ function AccessManager({ session, initialData, onLogout }) {
   const [editingSite, setEditingSite] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
   const [err, setErr] = useState('')
+  const [usersOpen, setUsersOpen] = useState(false)
 
   const refreshAll = useCallback(async () => {
     try {
@@ -846,96 +1062,86 @@ function AccessManager({ session, initialData, onLogout }) {
         </div>
       )}
 
-      {/* Sites */}
+      {/* Sites — collapsible, hierarchical */}
+      <SitesSection
+        sites={sites}
+        onEdit={setEditingSite}
+        onSetParent={async (childId, parentId) => {
+          const child = sites.find((s) => s.id === childId)
+          if (!child) return
+          try {
+            await callAdmin(session.code, 'site_upsert', {
+              site: { ...child, parent_id: parentId },
+            })
+            await refreshAll()
+          } catch (e) { setErr(e.message) }
+        }}
+        onAdd={() => setEditingSite({})}
+      />
+
+      {/* Users — collapsible */}
       <section className="admin-section">
-        <div className="admin-section-head">
-          <h2 className="admin-h2">Sites ({sites.length})</h2>
-          <button className="admin-btn admin-btn--primary" style={{ width: 'auto' }} onClick={() => setEditingSite({})}>
-            + Tilføj site
-          </button>
+        <div
+          className="admin-section-head admin-section-head--toggle"
+          onClick={() => setUsersOpen((v) => !v)}
+        >
+          <h2 className="admin-h2">
+            <span className="admin-collapse-icon">{usersOpen ? '▾' : '▸'}</span>
+            Users ({filteredUsers.length} / {users.length})
+          </h2>
         </div>
-        {sites.length === 0 ? (
-          <div className="admin-empty">
-            Ingen sites endnu. Tilføj det første for at begynde at toggle adgang.
-          </div>
-        ) : (
-          <div className="admin-sites-grid">
-            {sites.map((s) => (
-              <div
-                key={s.id}
-                className="admin-site-card"
-                style={{ borderLeftColor: s.color || '#d4af37' }}
-                onClick={() => setEditingSite(s)}
-              >
-                <div className="admin-site-icon-sm" style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}>
-                  <IconPreview icon={s.icon} color={s.color} size={20} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="admin-site-name">{s.name}</div>
-                  <div className="admin-site-url">{s.url}</div>
-                </div>
-                <div className="admin-site-meta">
-                  <span className="admin-tag">{s.key}</span>
-                  {!s.active && <span className="admin-tag admin-tag--muted">inaktiv</span>}
-                </div>
+        {usersOpen && (
+          <>
+            <div className="admin-filters">
+              <input
+                className="admin-input"
+                placeholder="Søg navn, email, telefon, kode…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ flex: 1, minWidth: 200 }}
+              />
+              <div className="admin-tabs">
+                {[
+                  { k: 'all', l: `Alle (${users.length})` },
+                  { k: 'employee', l: `Crew (${counts.crew})` },
+                  { k: 'ef_admin', l: `Admin (${counts.admin})` },
+                  { k: 'ef_client', l: `Klienter (${counts.ef_client})` },
+                  { k: 'venue', l: `Venues (${counts.venue})` },
+                ].map((tab) => (
+                  <button
+                    key={tab.k}
+                    className={`admin-tab ${filter === tab.k ? 'active' : ''}`}
+                    onClick={() => setFilter(tab.k)}
+                  >
+                    {tab.l}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+
+            <div className="admin-user-list">
+              {filteredUsers.map((u) => (
+                <UserRow
+                  key={`${u.user_type}|${u.user_id}`}
+                  user={u}
+                  access={access}
+                  sitesCount={sites.length}
+                  onOpen={setSelectedUser}
+                  onSetCode={setUserCode}
+                />
+              ))}
+              {filteredUsers.length === 0 && (
+                <div className="admin-empty">Ingen brugere matcher søgningen.</div>
+              )}
+            </div>
+          </>
         )}
-      </section>
-
-      {/* Users */}
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h2 className="admin-h2">Users ({filteredUsers.length} / {users.length})</h2>
-        </div>
-        <div className="admin-filters">
-          <input
-            className="admin-input"
-            placeholder="Søg navn, email, telefon, kode…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, minWidth: 200 }}
-          />
-          <div className="admin-tabs">
-            {[
-              { k: 'all', l: `Alle (${users.length})` },
-              { k: 'employee', l: `Crew (${counts.crew})` },
-              { k: 'ef_admin', l: `Admin (${counts.admin})` },
-              { k: 'ef_client', l: `Klienter (${counts.ef_client})` },
-              { k: 'venue', l: `Venues (${counts.venue})` },
-            ].map((tab) => (
-              <button
-                key={tab.k}
-                className={`admin-tab ${filter === tab.k ? 'active' : ''}`}
-                onClick={() => setFilter(tab.k)}
-              >
-                {tab.l}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="admin-user-list">
-          {filteredUsers.map((u) => (
-            <UserRow
-              key={`${u.user_type}|${u.user_id}`}
-              user={u}
-              access={access}
-              sitesCount={sites.length}
-              onOpen={setSelectedUser}
-              onSetCode={setUserCode}
-            />
-          ))}
-          {filteredUsers.length === 0 && (
-            <div className="admin-empty">Ingen brugere matcher søgningen.</div>
-          )}
-        </div>
       </section>
 
       {editingSite !== null && (
         <SiteEditor
           site={editingSite.id ? editingSite : null}
+          allSites={sites}
           onSave={saveSite}
           onCancel={() => setEditingSite(null)}
           onDelete={deleteSite}

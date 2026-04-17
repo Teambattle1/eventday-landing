@@ -644,6 +644,76 @@ input, textarea, select, button {
   margin-bottom: 16px;
 }
 .admin-info-box b { color: var(--accent); }
+/* Section collapse toggle */
+.admin-section-head--toggle {
+  cursor: pointer;
+  user-select: none;
+}
+.admin-section-head--toggle:hover { opacity: 0.8; }
+.admin-collapse-icon {
+  display: inline-block;
+  width: 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+/* Site hierarchy */
+.admin-site-group { display: flex; flex-direction: column; }
+.admin-site-children {
+  margin-left: 28px;
+  padding-left: 12px;
+  border-left: 2px solid var(--border2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.admin-site-card--child { padding: 8px 14px; }
+.admin-site-expand {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--border2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.admin-site-expand:hover { border-color: var(--accent); color: var(--accent); }
+/* Site access tree (UserDetail) */
+.admin-site-tree-group { display: flex; flex-direction: column; }
+.admin-site-row--parent {
+  border-left: 4px solid transparent;
+  cursor: pointer;
+}
+.admin-site-row--indent {
+  margin-left: 28px;
+  padding-left: 12px;
+  border-left-width: 3px;
+}
+.admin-site-tree-children {
+  margin-left: 28px;
+  padding-left: 12px;
+  border-left: 2px solid var(--border2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.admin-site-child-count {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-left: 8px;
+  background: var(--surface3);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
 .admin-venue-badge {
   background: var(--green-dim);
   color: var(--green);
