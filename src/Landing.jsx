@@ -958,7 +958,7 @@ export default function Landing() {
                             style={{
                               width: '64px',
                               height: '64px',
-                              borderRadius: '16px',
+                              borderRadius: '50%',
                               background: tint,
                               display: 'flex',
                               alignItems: 'center',

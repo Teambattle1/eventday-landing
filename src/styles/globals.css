@@ -74,7 +74,7 @@ input, textarea, select, button {
   .ed-landing-card--chooser .ed-user-sites-grid button > div:first-child {
     width: 80px !important;
     height: 80px !important;
-    border-radius: 20px !important;
+    border-radius: 50% !important;
   }
   .ed-landing-card--chooser .ed-user-sites-grid button > span {
     font-size: 12px !important;
@@ -92,7 +92,7 @@ input, textarea, select, button {
   .ed-landing-card--chooser .ed-user-sites-grid button > div:first-child {
     width: 96px !important;
     height: 96px !important;
-    border-radius: 22px !important;
+    border-radius: 50% !important;
     box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
   }
   .ed-landing-card--chooser .ed-user-sites-grid button > span {
