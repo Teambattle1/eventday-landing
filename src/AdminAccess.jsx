@@ -325,8 +325,20 @@ function UserRow({ user, access, sitesCount, onOpen, onSetCode }) {
 
 // ── Icon preview helper ───────────────────────────────────────────────────
 // Fills its parent container (cover). Parent must have overflow: hidden.
-function IconPreview({ icon, color }) {
-  if (!icon) return null
+function IconPreview({ icon, color, name }) {
+  if (!icon) {
+    // Fallback: first letter of name
+    return (
+      <span style={{
+        fontSize: 16,
+        fontWeight: 700,
+        fontFamily: "'Playfair Display', Georgia, serif",
+        color: '#fff',
+      }}>
+        {(name || '?').charAt(0).toUpperCase()}
+      </span>
+    )
+  }
   if (icon.startsWith('data:image/') || icon.startsWith('http')) {
     return (
       <img
@@ -529,7 +541,7 @@ function SiteAccessTree({ sites, localGrants, savingSites, onToggle }) {
         style={on ? { borderLeftColor: s.color || 'var(--accent)' } : {}}
       >
         <div className="admin-site-row-icon" style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}>
-          <IconPreview icon={s.icon} color={s.color} size={22} />
+          <IconPreview icon={s.icon} color={s.color} name={s.name} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="admin-site-row-name">{s.name}</div>
@@ -562,7 +574,7 @@ function SiteAccessTree({ sites, localGrants, savingSites, onToggle }) {
                 {isExpanded ? '−' : '+'}
               </button>
               <div className="admin-site-row-icon" style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}>
-                <IconPreview icon={s.icon} color={s.color} size={22} />
+                <IconPreview icon={s.icon} color={s.color} name={s.name} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }} onClick={() => toggleExpand(s.id)}>
                 <div className="admin-site-row-name">
@@ -655,7 +667,7 @@ function SitesSection({ sites, onEdit, onSetParent, onAdd }) {
                     className="admin-site-icon-sm"
                     style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}
                   >
-                    <IconPreview icon={s.icon} color={s.color} size={20} />
+                    <IconPreview icon={s.icon} color={s.color} name={s.name} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onEdit(s)}>
                     <div className="admin-site-name">{s.name}</div>
@@ -683,7 +695,7 @@ function SitesSection({ sites, onEdit, onSetParent, onAdd }) {
                           className="admin-site-icon-sm"
                           style={{ background: c.color ? `${c.color}22` : 'var(--surface3)' }}
                         >
-                          <IconPreview icon={c.icon} color={c.color} size={20} />
+                          <IconPreview icon={c.icon} color={c.color} name={c.name} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="admin-site-name">{c.name}</div>
