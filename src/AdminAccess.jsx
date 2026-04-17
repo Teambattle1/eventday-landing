@@ -663,7 +663,7 @@ function AccessManager({ session, initialData, onLogout }) {
   const [sites, setSites] = useState(initialData.sites)
   const [users, setUsers] = useState(initialData.users)
   const [access, setAccess] = useState(() => buildAccessSet(initialData.access))
-  const [filter, setFilter] = useState('all') // all | employee | ef_admin | ef_client
+  const [filter, setFilter] = useState('employee') // default to Crew tab
   const [search, setSearch] = useState('')
   const [editingSite, setEditingSite] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
