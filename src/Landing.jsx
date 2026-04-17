@@ -804,7 +804,7 @@ export default function Landing() {
         {/* Kortet */}
         {introComplete && (
           <div
-            className="ed-landing-card"
+            className={`ed-landing-card ${userSites ? 'ed-landing-card--chooser' : ''}`}
             style={{
               width: '100%',
               maxWidth: '420px',

@@ -61,6 +61,45 @@ input, textarea, select, button {
   font-family: 'Outfit', sans-serif;
 }
 
+/* ── Desktop responsive: chooser uses full width ─────────────────────── */
+@media (min-width: 768px) {
+  .ed-landing-card--chooser {
+    max-width: 720px !important;
+    border-radius: 20px !important;
+  }
+  .ed-landing-card--chooser .ed-user-sites-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 16px !important;
+  }
+  .ed-landing-card--chooser .ed-user-sites-grid button > div:first-child {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 20px !important;
+  }
+  .ed-landing-card--chooser .ed-user-sites-grid button > span {
+    font-size: 12px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ed-landing-card--chooser {
+    max-width: 900px !important;
+  }
+  .ed-landing-card--chooser .ed-user-sites-grid {
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 20px !important;
+  }
+  .ed-landing-card--chooser .ed-user-sites-grid button > div:first-child {
+    width: 96px !important;
+    height: 96px !important;
+    border-radius: 22px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+  }
+  .ed-landing-card--chooser .ed-user-sites-grid button > span {
+    font-size: 13px !important;
+  }
+}
+
 /* ── Admin Access Management ───────────────────────────────────────────── */
 .admin-shell {
   max-width: 1400px;
