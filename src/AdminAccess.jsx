@@ -867,14 +867,12 @@ function AccessManager({ session, initialData, onLogout }) {
                 style={{ borderLeftColor: s.color || '#d4af37' }}
                 onClick={() => setEditingSite(s)}
               >
-                <div className="admin-site-card-top">
-                  <div className="admin-site-icon-sm" style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}>
-                    <IconPreview icon={s.icon} color={s.color} size={20} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="admin-site-name">{s.name}</div>
-                    <div className="admin-site-url">{s.url}</div>
-                  </div>
+                <div className="admin-site-icon-sm" style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}>
+                  <IconPreview icon={s.icon} color={s.color} size={20} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="admin-site-name">{s.name}</div>
+                  <div className="admin-site-url">{s.url}</div>
                 </div>
                 <div className="admin-site-meta">
                   <span className="admin-tag">{s.key}</span>
