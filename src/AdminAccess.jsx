@@ -45,6 +45,14 @@ function defaultCodeFromPhone(phone) {
   return digits.slice(-4)
 }
 
+// Get initials from a name: "Thomas Sunke" → "TS", "CREW" → "CR"
+function getInitials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
 const ROLE_LABELS = {
   admin: 'Admin',
   crew: 'Crew',
@@ -239,87 +247,31 @@ function CodeEditor({ user, onSetCode }) {
 }
 
 // ── User row (handles top-level users + nested ef_contacts under clients) ─
-function UserRow({ user, access, sitesCount, onOpen, onSetCode }) {
-  const userKey = `${user.user_type}|${user.user_id}`
-  const grants = access.get(userKey) || new Set()
-  const isClient = user.user_type === 'ef_client'
+// Role → avatar background color
+const ROLE_COLORS = {
+  admin: 'var(--accent)',
+  crew: 'var(--blue)',
+  ef_admin: 'var(--gold)',
+  ef_client: 'var(--green)',
+  ef_contact: 'var(--gold)',
+  venue: '#1a9e75',
+}
 
+function UserIconBtn({ user, onClick }) {
   return (
-    <div className="admin-user-row-wrap">
+    <button
+      className="admin-icon-btn"
+      onClick={() => onClick(user)}
+      title={`${user.name}\n${user.email || ''}\n${user.phone || ''}\n${user.code || 'Ingen kode'}`}
+    >
       <div
-        className="admin-user-row"
-        onClick={() => onOpen(user)}
-        role="button"
-        tabIndex={0}
+        className="admin-icon-circle"
+        style={{ background: ROLE_COLORS[user.role] || 'var(--muted)' }}
       >
-        <div className="admin-user-row-main">
-          <div className="admin-user-name">
-            {user.name}
-            <span className={`admin-role admin-role--${user.role}`}>
-              {ROLE_LABELS[user.role] || user.role}
-            </span>
-          </div>
-          <div className="admin-user-sub">{user.subtitle}</div>
-          {(user.email || user.phone) && (
-            <div className="admin-user-meta">
-              {user.email && <span>{user.email}</span>}
-              {user.phone && <span>{user.phone}</span>}
-            </div>
-          )}
-        </div>
-        <div className="admin-user-row-right">
-          <CodeEditor user={user} onSetCode={onSetCode} />
-          {isClient ? (
-            <div className="admin-user-count admin-eventday-badge">→ eventday.dk</div>
-          ) : user.user_type === 'venue' ? (
-            <div className="admin-user-count admin-venue-badge">→ venue.eventday.dk</div>
-          ) : (
-            <div className="admin-user-count">{grants.size} / {sitesCount} sites</div>
-          )}
-        </div>
+        <span>{getInitials(user.name)}</span>
       </div>
-
-      {/* Nested contacts under a client */}
-      {isClient && Array.isArray(user.contacts) && user.contacts.length > 0 && (
-        <div className="admin-user-contacts">
-          {user.contacts.map((c) => {
-            const cKey = `${c.user_type}|${c.user_id}`
-            const cGrants = access.get(cKey) || new Set()
-            return (
-              <div
-                key={cKey}
-                className="admin-user-row admin-user-row--contact"
-                onClick={() => onOpen(c)}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="admin-user-row-main">
-                  <div className="admin-user-name">
-                    <span className="admin-contact-arrow">↳</span>
-                    {c.name}
-                    {c.is_primary && <span className="admin-tag admin-tag--primary">primær</span>}
-                    <span className={`admin-role admin-role--${c.role}`}>
-                      {ROLE_LABELS[c.role] || c.role}
-                    </span>
-                  </div>
-                  <div className="admin-user-sub">{c.subtitle}</div>
-                  {(c.email || c.phone) && (
-                    <div className="admin-user-meta">
-                      {c.email && <span>{c.email}</span>}
-                      {c.phone && <span>{c.phone}</span>}
-                    </div>
-                  )}
-                </div>
-                <div className="admin-user-row-right">
-                  <CodeEditor user={c} onSetCode={onSetCode} />
-                  <div className="admin-user-count">{cGrants.size} / {sitesCount} sites</div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
+      <span className="admin-icon-label">{user.name}</span>
+    </button>
   )
 }
 
@@ -598,33 +550,11 @@ function SiteAccessTree({ sites, localGrants, savingSites, onToggle }) {
 // ── Sites section with hierarchy + collapse ────────────────────────────────
 function SitesSection({ sites, onEdit, onSetParent, onAdd }) {
   const [open, setOpen] = useState(false)
-  const [expandedParents, setExpandedParents] = useState(new Set())
 
-  const parentSites = useMemo(
-    () => sites.filter((s) => !s.parent_id).sort((a, b) => a.name.localeCompare(b.name)),
+  const sorted = useMemo(
+    () => [...sites].sort((a, b) => a.name.localeCompare(b.name)),
     [sites]
   )
-  const childrenByParent = useMemo(() => {
-    const m = new Map()
-    for (const s of sites) {
-      if (s.parent_id) {
-        if (!m.has(s.parent_id)) m.set(s.parent_id, [])
-        m.get(s.parent_id).push(s)
-      }
-    }
-    // Sort children alphabetically
-    for (const [, arr] of m) arr.sort((a, b) => a.name.localeCompare(b.name))
-    return m
-  }, [sites])
-
-  function toggleParent(id) {
-    setExpandedParents((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
 
   return (
     <section className="admin-section">
@@ -641,74 +571,32 @@ function SitesSection({ sites, onEdit, onSetParent, onAdd }) {
           style={{ width: 'auto' }}
           onClick={(e) => { e.stopPropagation(); onAdd() }}
         >
-          + Tilføj site
+          + Tilføj
         </button>
       </div>
       {open && (
-        <div className="admin-sites-grid">
-          {parentSites.map((s) => {
-            const children = childrenByParent.get(s.id) || []
-            const isExpanded = expandedParents.has(s.id)
+        <div className="admin-icon-grid">
+          {sorted.map((s) => {
+            const isImg = s.icon && (s.icon.startsWith('data:image/') || s.icon.startsWith('http'))
             return (
-              <div key={s.id} className="admin-site-group">
+              <button
+                key={s.id}
+                className="admin-icon-btn"
+                onClick={() => onEdit(s)}
+                title={`${s.name}\n${s.url}\nkey: ${s.key}`}
+              >
                 <div
-                  className="admin-site-card"
-                  style={{ borderLeftColor: s.color || '#d4af37' }}
+                  className="admin-icon-circle"
+                  style={{ background: s.color || 'var(--accent)' }}
                 >
-                  {children.length > 0 && (
-                    <button
-                      className="admin-site-expand"
-                      onClick={(e) => { e.stopPropagation(); toggleParent(s.id) }}
-                    >
-                      {isExpanded ? '▾' : '▸'}
-                    </button>
+                  {isImg ? (
+                    <img src={s.icon} alt="" />
+                  ) : (
+                    <span>{s.name.charAt(0).toUpperCase()}</span>
                   )}
-                  <div
-                    className="admin-site-icon-sm"
-                    style={{ background: s.color ? `${s.color}22` : 'var(--surface3)' }}
-                  >
-                    <IconPreview icon={s.icon} color={s.color} name={s.name} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onEdit(s)}>
-                    <div className="admin-site-name">{s.name}</div>
-                    <div className="admin-site-url">{s.url}</div>
-                  </div>
-                  <div className="admin-site-meta">
-                    {children.length > 0 && (
-                      <span className="admin-tag">{children.length} child</span>
-                    )}
-                    <span className="admin-tag">{s.key}</span>
-                    {!s.active && <span className="admin-tag admin-tag--muted">inaktiv</span>}
-                  </div>
                 </div>
-                {isExpanded && children.length > 0 && (
-                  <div className="admin-site-children">
-                    {children.map((c) => (
-                      <div
-                        key={c.id}
-                        className="admin-site-card admin-site-card--child"
-                        style={{ borderLeftColor: c.color || s.color || '#d4af37' }}
-                        onClick={() => onEdit(c)}
-                      >
-                        <span className="admin-contact-arrow">↳</span>
-                        <div
-                          className="admin-site-icon-sm"
-                          style={{ background: c.color ? `${c.color}22` : 'var(--surface3)' }}
-                        >
-                          <IconPreview icon={c.icon} color={c.color} name={c.name} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="admin-site-name">{c.name}</div>
-                          <div className="admin-site-url">{c.url}</div>
-                        </div>
-                        <div className="admin-site-meta">
-                          <span className="admin-tag">{c.key}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                <span className="admin-icon-label">{s.name}</span>
+              </button>
             )
           })}
         </div>
@@ -1131,15 +1019,12 @@ function AccessManager({ session, initialData, onLogout }) {
               </div>
             </div>
 
-            <div className="admin-user-list">
+            <div className="admin-icon-grid">
               {filteredUsers.map((u) => (
-                <UserRow
+                <UserIconBtn
                   key={`${u.user_type}|${u.user_id}`}
                   user={u}
-                  access={access}
-                  sitesCount={sites.length}
-                  onOpen={setSelectedUser}
-                  onSetCode={setUserCode}
+                  onClick={setSelectedUser}
                 />
               ))}
               {filteredUsers.length === 0 && (
