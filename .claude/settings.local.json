@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -sS -X POST 'https://ilbjytyukicbssqftmma.supabase.co/functions/v1/ef-verify-code' -H 'Content-Type: application/json' -d '{\"code\":\"4027\"}')",
+      "Bash(npm install:*)",
+      "Bash(curl -sS -X POST 'https://ilbjytyukicbssqftmma.supabase.co/functions/v1/ef-admin-access' -H 'Content-Type: application/json' -d '{\"adminCode\":\"4027\",\"action\":\"update_user_code\",\"user_type\":\"employee\",\"user_id\":\"emp_0yyp87nsx\",\"code\":\"1004\"}')",
+      "Bash(npm uninstall:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(python -m json.tool)",
+      "Bash(grep -r \"VITE_SUPABASE\" .env*)",
+      "Bash(curl -sI https://app.eventday.dk)",
+      "Bash(curl -sS --max-time 10 -I https://app.eventday.dk)",
+      "Bash(curl -sS --max-time 10 -I http://app.eventday.dk)",
+      "Bash(curl -sS --max-time 10 -o /dev/null -w \"%{http_code} %{redirect_url}\" https://app.eventday.dk)",
+      "Bash(curl -sS --max-time 10 https://app.eventday.dk)",
+      "Bash(curl -sS --max-time 10 https://landing-eventday.netlify.app)",
+      "Bash(curl -sS --max-time 10 https://landing-eventday.netlify.app/assets/index-40HdWgCF.js)"
+    ]
+  }
+}
