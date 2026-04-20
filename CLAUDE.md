@@ -36,10 +36,13 @@ Central login portal for EventDay — users enter a code and see their authorise
 
 ## Active patterns
 - Clients always use legacy portal redirect flow (never `user_sites`)
-- New sites auto-grant all admin users (employees with `is_admin=true` + `ef_admin_users`)
+- **New sites auto-grant alle aktive employees (crew + admin) + `ef_admin_users`** via `grantAllStaffToSite` i `ef-admin-access` v11+. Admin Panel (`key='admin'`) auto-grants kun til `is_admin=true`.
 - Icon upload resizes to 256×256 PNG via canvas before storing as data URL in `landing_sites.icon`
 - "Sæt kode" button defaults to last 4 digits of phone number
 - Code uniqueness checked across ALL code sources (landing_user_codes, ef_clients, ef_contacts, ef_admin_users, access_codes)
+
+## Sites = source-of-truth fra TEAMBATTLE.md
+`landing_sites` skal til enhver tid afspejle alle ikke-private projekter i `../TEAMBATTLE.md`. Pr. 2026-04-20 er det 21 projekter: APP, CHECK, CREW, DASH, EVENTDAY, FLOW, GAMES, IDEAS, LOQUIZ, MEDIA, MEET, MUSIC, MY, PLAY, QR, TASTE, TODO, Toolbox, TRACK, VENUE, WORK (+ Admin Panel). Når et projekt tilføjes/omdøbes/slettes i TEAMBATTLE.md, opdater `landing_sites` tilsvarende — så er nye projekter automatisk tilgængelige for crew/admin assignment.
 
 ## Known issues / gotchas
 - `eventday.dk` has both an A record (75.2.60.5) and a NETLIFY record pointing to this site — the A record may take priority in some DNS resolvers
